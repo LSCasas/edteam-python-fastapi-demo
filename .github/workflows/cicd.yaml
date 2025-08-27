@@ -55,6 +55,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
+          envs: DOCKER_IMAGE
           script: |
             echo "Download new version"
             docker pull $DOCKER_IMAGE
