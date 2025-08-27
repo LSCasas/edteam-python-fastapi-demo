@@ -6,20 +6,23 @@ from fastapi import FastAPI, HTTPException
 from .db import models
 from .api import api
 
-VERSION=0.1
+VERSION = 1.0
 app = FastAPI()
 
 
 @app.get("/status", status_code=200)
 def get_stores():
     """Return status"""
-    return {"status":"healthy", "version":VERSION}
+    return {"status": "healthy", "version": VERSION}
 
-#Stores
+# Stores
+
+
 @app.get("/stores")
 def get_stores():
     """Return all the stores in the DB"""
     return api.all_stores()
+
 
 @app.get("/stores/{store_id}")
 def get_store(store_id: int):
@@ -28,6 +31,7 @@ def get_store(store_id: int):
     if req != {}:
         return req
     raise HTTPException(status_code=404, detail="Store not found")
+
 
 @app.post("/stores", status_code=201)
 def add_store(store: models.Store):
@@ -44,6 +48,7 @@ def delete_store(store_id: int):
     try:
         api.delete_store(store_id)
     except IndexError:
-        raise HTTPException(status_code=404, detail="store not found") from None
+        raise HTTPException(
+            status_code=404, detail="store not found") from None
     except Exception as err:
         raise HTTPException(status_code=422, detail=err) from None
