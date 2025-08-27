@@ -62,20 +62,18 @@ jobs:
             echo "Stop current version"
             sleep 1
             API=$(docker ps -q -f name=api)
-            if [! -z $API ]
-            then
+            if [ ! -z "$API" ]; then
               docker stop $API
               docker rm $API
-              fi
-              docker run -d --name api -p 80:8080 $DOCKER_IMAGE
+            fi
+            docker run -d --name api -p 80:8080 $DOCKER_IMAGE
 
       - name: Checkout service
         env:
           ENDPOINT: ${{ secrets.ENDPOINT }}
         run: |
           RESPONSE=$(curl -o /dev/null -s -w "%{http_code}\n" ${ENDPOINT})
-          if [ $RESPONSE -ne "200"]
-          then
+          if [ "$RESPONSE" -ne 200 ]; then
             echo "Service unresponsive"
             exit 1
           fi
