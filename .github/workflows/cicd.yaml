@@ -66,9 +66,19 @@ jobs:
         env:
           ENDPOINT: ${{ secrets.ENDPOINT }}
         run: |
-          RESPONSE=$(curl -o /dev/null -s -w "%{http_code}\n" ${ENDPOINT})
+          echo "Checking service status..."
+          for i in {1..10}; do
+            RESPONSE=$(curl -o /dev/null -s -w "%{http_code}\n" $ENDPOINT) || RESPONSE=0
+            if [ "$RESPONSE" -eq 200 ]; then
+              echo "Service is up!"
+              break
+            fi
+            echo "Waiting for service..."
+            sleep 3
+          done
+
           if [ "$RESPONSE" -ne 200 ]; then
-            echo "Service unresponsive"
+            echo "Service unresponsive after 10 retries"
             exit 1
           fi
           echo "Successfully"
