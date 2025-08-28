@@ -51,38 +51,37 @@ jobs:
         env:
           DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/edteam-fastapi-demo:${{ github.sha }}
         run: |
-          echo "Download new version"
-          docker pull $DOCKER_IMAGE
-          echo "Stop current version"
-          sleep 1
+          echo "[DEPLOY] Starting deployment of $DOCKER_IMAGE"
+          docker pull $DOCKER_IMAGE || { echo "[DEPLOY] ERROR: Failed to pull Docker image" | mail -s "🚨 [DEPLOY FAILED] Docker Pull" luisscasas45@gmail.com; exit 1; }
+
           API=$(docker ps -q -f name=api)
           if [ ! -z "$API" ]; then
-            docker stop $API
-            docker rm $API
+            echo "[DEPLOY] Stopping current container"
+            docker stop $API || { echo "[DEPLOY] ERROR: Failed to stop existing container" | mail -s "🚨 [DEPLOY FAILED] Stop Container" luisscasas45@gmail.com; exit 1; }
+            docker rm $API || { echo "[DEPLOY] ERROR: Failed to remove existing container" | mail -s "🚨 [DEPLOY FAILED] Remove Container" luisscasas45@gmail.com; exit 1; }
           fi
-          docker run -d --name api -p 80:8080 $DOCKER_IMAGE || {
-            echo "Docker run failed" | mail -s "🚨 Deploy failed" luisscasas45@gmail.com
-            exit 1
-          }
 
-      - name: Checkout service
+          echo "[DEPLOY] Starting new container"
+          docker run -d --name api -p 80:8080 $DOCKER_IMAGE || { echo "[DEPLOY] ERROR: Failed to start new container" | mail -s "🚨 [DEPLOY FAILED] Start Container" luisscasas45@gmail.com; exit 1; }
+
+      - name: Check service
         env:
           ENDPOINT: ${{ secrets.ENDPOINT }}
         run: |
-          echo "Checking service status..."
+          echo "[CHECK] Verifying service health..."
           for i in {1..10}; do
             RESPONSE=$(curl -o /dev/null -s -w "%{http_code}\n" $ENDPOINT) || RESPONSE=0
             if [ "$RESPONSE" -eq 200 ]; then
-              echo "Service is up!"
+              echo "[CHECK] Service is responding!"
               break
             fi
-            echo "Waiting for service..."
+            echo "[CHECK] Waiting for service to respond..."
             sleep 3
           done
 
           if [ "$RESPONSE" -ne 200 ]; then
-            echo "Service unresponsive after 10 retries" | mail -s "🚨 Service unresponsive" luisscasas45@gmail.com
+            echo "[CHECK] ERROR: Service did not respond after 10 attempts" | mail -s "🚨 [SERVICE UNRESPONSIVE]" luisscasas45@gmail.com
             exit 1
           fi
 
-          echo "Successfully"
+          echo "[SUCCESS] Deployment and service check completed successfully!" | mail -s "✅ [DEPLOY SUCCESS]" luisscasas45@gmail.com
