@@ -51,34 +51,51 @@ jobs:
         env:
           DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/edteam-fastapi-demo:${{ github.sha }}
         run: |
-          echo "Download new version"
-          docker pull $DOCKER_IMAGE
-          echo "Stop current version"
+          echo "[DEPLOY] Downloading new version"
+          docker pull $DOCKER_IMAGE || exit 1
+
+          echo "[DEPLOY] Stopping current version"
           sleep 1
           API=$(docker ps -q -f name=api)
           if [ ! -z "$API" ]; then
             docker stop $API
             docker rm $API
           fi
-          docker run -d --name api -p 80:8080 $DOCKER_IMAGE
+
+          echo "[DEPLOY] Starting new container"
+          docker run -d --name api -p 80:8080 $DOCKER_IMAGE || exit 1
 
       - name: Checkout service
         env:
           ENDPOINT: ${{ secrets.ENDPOINT }}
         run: |
-          echo "Checking service status..."
+          echo "[CHECK] Checking service status..."
           for i in {1..10}; do
             RESPONSE=$(curl -o /dev/null -s -w "%{http_code}\n" $ENDPOINT) || RESPONSE=0
             if [ "$RESPONSE" -eq 200 ]; then
-              echo "Service is up!"
+              echo "[CHECK] Service is up!"
               break
             fi
-            echo "Waiting for service..."
+            echo "[CHECK] Waiting for service..."
             sleep 3
           done
 
           if [ "$RESPONSE" -ne 200 ]; then
-            echo "Service unresponsive after 10 retries"
+            echo "[CHECK] Service unresponsive after 10 retries"
             exit 1
           fi
-          echo "Successfully"
+
+          echo "[SUCCESS] Service check completed"
+
+      - name: Send Email Notification
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: ${{ job.status == 'success' && '✅ Deployment Successful' || '🚨 Deployment Failed' }}
+          body: ${{ job.status == 'success' && 'El deploy y la verificación del servicio se completaron correctamente.' || 'Hubo un problema durante el deploy o el chequeo del servicio.' }}
+          to: luisscasas45@gmail.com
+          from: ${{ secrets.SMTP_USERNAME }}
