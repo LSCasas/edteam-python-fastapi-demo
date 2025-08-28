@@ -44,29 +44,23 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/edteam-fastapi-demo:${{ github.sha }}
 
   cd:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: ci
     steps:
       - name: Deploy
-        uses: appleboy/ssh-action@v1
         env:
           DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/edteam-fastapi-demo:${{ github.sha }}
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          envs: DOCKER_IMAGE
-          script: |
-            echo "Download new version"
-            docker pull $DOCKER_IMAGE
-            echo "Stop current version"
-            sleep 1
-            API=$(docker ps -q -f name=api)
-            if [ ! -z "$API" ]; then
-              docker stop $API
-              docker rm $API
-            fi
-            docker run -d --name api -p 80:8080 $DOCKER_IMAGE
+        run: |
+          echo "Download new version"
+          docker pull $DOCKER_IMAGE
+          echo "Stop current version"
+          sleep 1
+          API=$(docker ps -q -f name=api)
+          if [ ! -z "$API" ]; then
+            docker stop $API
+            docker rm $API
+          fi
+          docker run -d --name api -p 80:8080 $DOCKER_IMAGE
 
       - name: Checkout service
         env:
