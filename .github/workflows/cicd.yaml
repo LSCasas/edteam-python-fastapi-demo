@@ -60,7 +60,10 @@ jobs:
             docker stop $API
             docker rm $API
           fi
-          docker run -d --name api -p 80:8080 $DOCKER_IMAGE
+          docker run -d --name api -p 80:8080 $DOCKER_IMAGE || {
+            echo "Docker run failed" | mail -s "🚨 Deploy failed" luisscasas45@gmail.com
+            exit 1
+          }
 
       - name: Checkout service
         env:
@@ -78,7 +81,8 @@ jobs:
           done
 
           if [ "$RESPONSE" -ne 200 ]; then
-            echo "Service unresponsive after 10 retries"
+            echo "Service unresponsive after 10 retries" | mail -s "🚨 Service unresponsive" luisscasas45@gmail.com
             exit 1
           fi
+
           echo "Successfully"
